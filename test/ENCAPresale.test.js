@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { deployMockContract } = require("ethereum-waffle");
 const { ethers, waffle } = require("hardhat");
-const uniswapAbi = require("../data/mocks/UniswapRouterV2Mock.json");
+const uniswapAbi = require("./mocks/UniswapRouterV2Mock.json");
 
 const setUp = async () => {
   const [owner, addr1, addr2, addr3] = await ethers.getSigners();
@@ -82,7 +82,7 @@ describe("ENCAPresale", function () {
       await presale.startSale();
       let addr1presale = presale.connect(addr1);
       await addr1presale.contribute({
-        value: ethers.utils.parseEther("1"),       
+        value: ethers.utils.parseEther("1"),
       });
       expect(await token.balanceOf(addr1.address)).to.equal(
         ethers.utils.parseEther("100")

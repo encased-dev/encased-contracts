@@ -7,7 +7,7 @@ import "@nomiclabs/hardhat-etherscan";
 import "hardhat-typechain";
 import "hardhat-deploy";
 import "hardhat-gas-reporter";
-import "hardhat-abi-exporter";
+// import "hardhat-abi-exporter";
 import "hardhat-spdx-license-identifier";
 import '@openzeppelin/hardhat-upgrades';
 import "solidity-coverage"
@@ -54,13 +54,7 @@ const config: HardhatUserConfig = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
-  },
-  abiExporter: {
-    path: './data/abi',
-    clear: true,
-    flat: true,
-    only: ['ERC20Box', 'ENCA', 'ENCAPresale'],
-  },
+  }, 
   mocha: {
     timeout: 150000  
   },

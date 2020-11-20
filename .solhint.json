@@ -1,0 +1,12 @@
+{
+  "plugins": ["prettier"],
+  "extends": "solhint:recommended",
+  "rules": {
+    "func-order": "error",
+    "mark-callable-contracts": "warn",
+    "no-empty-blocks": "warn",
+    "compiler-version": ["error", "^0.6.0"],
+    "private-vars-leading-underscore": "error",
+    "reason-string": "warn"
+  }
+}

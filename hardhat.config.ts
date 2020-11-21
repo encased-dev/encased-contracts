@@ -49,6 +49,15 @@ const config: HardhatUserConfig = {
     outDir: "typechain",
     target: "ethers-v5",
   },
+  gasReporter: {
+    gasPrice: 20,
+    showTimeSpent: true,
+    noColors: true,
+    rst: true,
+    showMethodSig: true,
+    maxMethodDiff: 20,
+    outputFile: './gas_report.rst'
+  },
   paths: {
     sources: "./contracts",
     tests: "./test",

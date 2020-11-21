@@ -6,4 +6,5 @@ artifacts/
 coverage*
 .env
 .vscode
+utils
 /contracts/Governorate.temp

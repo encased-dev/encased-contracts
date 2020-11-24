@@ -19,7 +19,7 @@ async function main() {
     token.address,
     5,
     100,
-    0x7a250d5630b4cf539739df2c5dacb4c659f2488d
+    "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"
   );
   console.log(presale.address);
   await presale.deployed();

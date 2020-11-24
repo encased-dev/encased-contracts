@@ -16,6 +16,6 @@ script:
 
 jobs:
   include:
-    - stage: deploy-kovan
+    - name: deploy-kovan
     - if: branch = master and env(DEPLOY) = kovan
     - script: npm run deploy:kovan

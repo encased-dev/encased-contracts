@@ -5,7 +5,7 @@ const setUp = async () => {
   const [owner, addr1, addr2] = await ethers.getSigners();
   const tokenFactory = await ethers.getContractFactory("ENCA");
   const boxFactory = await ethers.getContractFactory("ERC20Box");
-  let token = await tokenFactory.deploy();
+  let token = await tokenFactory.deploy(true);
   await token.deployed();
   let box = await boxFactory.deploy(
     "LinkBoxTest",

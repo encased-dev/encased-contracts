@@ -14,7 +14,7 @@ const setUp = async () => {
   const tokenFactory = await ethers.getContractFactory("ENCA");
   const presaleFactory = await ethers.getContractFactory("ENCAPresale");
   let router = await UniswapRouterV2.deployed();
-  let token = await tokenFactory.deploy();
+  let token = await tokenFactory.deploy(true);
   await token.deployed();
   let presale = await presaleFactory.deploy(
     token.address,

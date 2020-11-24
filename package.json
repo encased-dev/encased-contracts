@@ -11,7 +11,7 @@
     "lint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol",
     "check": "npm run prettier:solidity && npm run lint",
-    "deployKovan": "npx hardhat run --network kovan scripts/testnet_deploy.js"
+    "deploy:kovan": "npx hardhat run --network kovan scripts/testnet_deploy.js"
   },
   "repository": {
     "type": "git",

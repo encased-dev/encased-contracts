@@ -13,3 +13,10 @@ script:
   - npx codechecks
   - npx hardhat coverage
   - cat coverage/lcov.info | npx coveralls
+
+jobs:
+  include:
+    - stage: deploy-kovan
+      if: branch = master
+      env: DEPLOY=kovan
+    - script: npm run deploy:kovan

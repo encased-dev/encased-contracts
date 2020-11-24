@@ -34,13 +34,13 @@ async function main() {
     process.env.PROD_URL,
     token.address,
     1
-  );
+  );  
+  await ebx.deployed();
   console.log(ebx.address);
   fs.writeFileSync(
     "./ERC20Box.txt",
     `EBXBeta, EBXB, ${token.address}, ${process.env.PROD_URL}, ${token.address}, 1`
   );
-  await ebx.deployed();
   // verifying contracts
   await hre.run("verify", {
     address: token.address,

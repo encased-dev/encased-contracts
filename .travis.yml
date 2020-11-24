@@ -14,8 +14,9 @@ script:
   - npx hardhat coverage
   - cat coverage/lcov.info | npx coveralls
 
-jobs:
-  include:
-    - name: deploy-kovan
-    - if: branch = master and env(DEPLOY) = kovan
-    - script: npm run deploy:kovan
+deploy:
+  - provider: script
+    script: npm run deploy:kovan
+    on:
+      branch: testnet
+      condition: $TRAVIS_BRANCH = testnet

@@ -12,16 +12,14 @@ import "hardhat/console.sol";
 /**
  * @title ERC20Box
  *
- * A tradable box (ERC-721), OpenSee.io compliant, which holds a portion of ERC-20 tokens,
- * that get credited to the owner upon 'opening' it
+ * A tradable box (ERC-721), OpenSee.io compliant, holds ERC-20 tokens, owner can "unpack" the box and recieve the tokens
  */
 contract ERC20Box is TradeableERC721Token {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using Strings for uint256;
 
     address public GOVERNANCE_CONTRACT_ADDRESS;
-    uint256 public FEE_AMOUNT = 1 * (10**18);
+    uint256 public FEE_AMOUNT;
 
     //TODO EDIT FRONTEND
     event RecievedERC20(
@@ -45,34 +43,26 @@ contract ERC20Box is TradeableERC721Token {
     event TokenMinted(address indexed _from, uint256 _tokenId);
 
     // tokenId => token contract
-    mapping(uint256 => address[]) private _tokenIdAddresses;
+    mapping(uint256 => address[]) public tokenIdAddresses;
     // tokenId => (token contract => balance)
-    mapping(uint256 => mapping(address => uint256))
-        private _tokenIdTokenBalances;
-    // tokenId => (token contract => token contract index)
-    mapping(uint256 => mapping(address => uint256))
-        private _tokenIdTokenIndexes;
+    mapping(uint256 => mapping(address => uint256)) public tokenIdTokenBalances;
 
-    mapping(uint256 => uint256[]) private _childTokens;
+    mapping(uint256 => uint256[]) public childTokens;
 
-    mapping(uint256 => uint256) private _parentTokenId;
+    mapping(uint256 => uint256) public parentTokenId;
 
     struct TokenBalance {
         uint256 _balance;
         address _tokenAddress;
     }
 
-    /**
-     * @dev Constructor function
-     * Important! This ERC20Box is not functional until depositERC20() is called
-     */
-
     constructor(
         string memory _name,
         string memory _symbol,
         address _proxyRegistryAddress,
         string memory _baseTokenURI,
-        address _governanceContractAddress
+        address _governanceContractAddress,
+        uint256 feeAmount
     )
         public
         TradeableERC721Token(
@@ -83,6 +73,7 @@ contract ERC20Box is TradeableERC721Token {
         )
     {
         GOVERNANCE_CONTRACT_ADDRESS = _governanceContractAddress;
+        FEE_AMOUNT = feeAmount;
         _setBaseURI(_baseTokenURI);
     }
 
@@ -91,7 +82,7 @@ contract ERC20Box is TradeableERC721Token {
 
     modifier isParentOf(uint256 _parentToken, uint256 _childToken) {
         require(
-            _parentTokenId[_childToken] == _parentToken,
+            parentTokenId[_childToken] == _parentToken,
             "Only Parent token of Child token can perform this action"
         );
         _;
@@ -107,27 +98,23 @@ contract ERC20Box is TradeableERC721Token {
             address(this),
             amount
         );
-        uint256 nextIndex = _tokenIdAddresses[_tokenId].length;
-        _tokenIdAddresses[_tokenId].push(tokenAddress);
-        _tokenIdTokenBalances[_tokenId][tokenAddress] = _tokenIdTokenBalances[_tokenId][tokenAddress]
+        tokenIdAddresses[_tokenId].push(tokenAddress);
+        tokenIdTokenBalances[_tokenId][tokenAddress] = tokenIdTokenBalances[_tokenId][tokenAddress]
             .add(amount);
-        _tokenIdTokenIndexes[_tokenId][tokenAddress] = nextIndex;
         emit RecievedERC20(msg.sender, _tokenId, tokenAddress, amount);
     }
 
-    //TODO rewrite using events
     function unpackAll(uint256 _tokenId, address recipientAddress)
         external
         onlyOwnerOf(_tokenId)
     {
         require(recipientAddress != address(0), "cannot be zero address");
-        /// IMPLEMENTATION
-        address[] memory _tokenAddresses = _tokenIdAddresses[_tokenId];
+        address[] memory _tokenAddresses = tokenIdAddresses[_tokenId];
         for (uint256 index = 0; index < _tokenAddresses.length; index++) {
 
                 uint256 balance
-             = _tokenIdTokenBalances[_tokenId][_tokenAddresses[index]];
-            _tokenIdTokenBalances[_tokenId][_tokenAddresses[index]] = _tokenIdTokenBalances[_tokenId][_tokenAddresses[index]]
+             = tokenIdTokenBalances[_tokenId][_tokenAddresses[index]];
+            tokenIdTokenBalances[_tokenId][_tokenAddresses[index]] = tokenIdTokenBalances[_tokenId][_tokenAddresses[index]]
                 .sub(balance);
             IERC20(_tokenAddresses[index]).safeTransfer(
                 recipientAddress,
@@ -167,8 +154,8 @@ contract ERC20Box is TradeableERC721Token {
             FEE_AMOUNT
         );
         uint256 newTokenId = super._mintDerived(_to, _tokenId);
-        _childTokens[_tokenId].push(newTokenId);
-        _parentTokenId[newTokenId] = _tokenId;
+        childTokens[_tokenId].push(newTokenId);
+        parentTokenId[newTokenId] = _tokenId;
         emit DerivedTokenMinted(msg.sender, _to, _tokenId, newTokenId);
     }
 
@@ -179,38 +166,30 @@ contract ERC20Box is TradeableERC721Token {
         uint256 amount
     ) external onlyOwnerOf(_parentToken) isParentOf(_parentToken, _childToken) {
         require(
-            _tokenIdTokenBalances[_parentToken][_erc20Address] >= amount,
+            tokenIdTokenBalances[_parentToken][_erc20Address] >= amount,
             "INVALID TOKEN BALANCE"
         );
-        _tokenIdTokenBalances[_parentToken][_erc20Address] = _tokenIdTokenBalances[_parentToken][_erc20Address]
+        tokenIdTokenBalances[_parentToken][_erc20Address] = tokenIdTokenBalances[_parentToken][_erc20Address]
             .sub(amount);
-        _tokenIdTokenBalances[_childToken][_erc20Address] = _tokenIdTokenBalances[_childToken][_erc20Address]
+        tokenIdTokenBalances[_childToken][_erc20Address] = tokenIdTokenBalances[_childToken][_erc20Address]
             .add(amount);
         emit TransferERC20(_parentToken, _childToken, _erc20Address, amount);
     }
 
     function getTokenAdresses(uint256 _tokenId)
-        public
+        external
         view
         returns (address[] memory)
     {
-        return _tokenIdAddresses[_tokenId];
+        return tokenIdAddresses[_tokenId];
     }
 
     function getERC20Balance(uint256 _tokenId, address _erc20Address)
-        public
-        view
-        returns (uint256)
-    {
-        return _tokenIdTokenBalances[_tokenId][_erc20Address];
-    }
-
-    function getIndexOfERC20(uint256 _tokenId, address _erc20Address)
         external
         view
         returns (uint256)
     {
-        return _tokenIdTokenIndexes[_tokenId][_erc20Address];
+        return tokenIdTokenBalances[_tokenId][_erc20Address];
     }
 
     function getChildTokens(uint256 _tokenId)
@@ -218,11 +197,11 @@ contract ERC20Box is TradeableERC721Token {
         view
         returns (uint256[] memory)
     {
-        return _childTokens[_tokenId];
+        return childTokens[_tokenId];
     }
 
     function getParent(uint256 _tokenId) external view returns (uint256) {
-        return _parentTokenId[_tokenId];
+        return parentTokenId[_tokenId];
     }
 
     /**
@@ -237,10 +216,10 @@ contract ERC20Box is TradeableERC721Token {
         view
         returns (TokenBalance[] memory)
     {
-        address[] memory addresses = getTokenAdresses(_tokenId);
+        address[] memory addresses = tokenIdAddresses[_tokenId];
         TokenBalance[] memory result = new TokenBalance[](addresses.length);
         for (uint256 index = 0; index < addresses.length; index++) {
-            uint256 balance = getERC20Balance(_tokenId, addresses[index]);
+            uint256 balance = tokenIdTokenBalances[_tokenId][addresses[index]];
             result[index] = TokenBalance(balance, addresses[index]);
         }
         return result;

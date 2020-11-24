@@ -12,7 +12,8 @@ const setUp = async () => {
     "LINKBX",
     token.address,
     "baseTokenURI",
-    token.address
+    token.address,
+    ethers.utils.parseEther("1")
   );
   await box.deployed();
   return {
@@ -34,7 +35,7 @@ describe("ERC20Box", function () {
       done();
     });
   });
-  it("Should deploy properly", async function () {
+  it("Should deploy properly", async function () {  
     expect(await box.burnedCount()).to.equal(0);
   });
   it("Should create valid tokenURI - emit TokenMinted", async function () {
@@ -48,6 +49,32 @@ describe("ERC20Box", function () {
     );
     expect(await box.tokenURI(1)).to.equal("baseTokenURI1");
     expect(await box.ownerOf(1)).to.equal(owner.address);
+  });
+  it("Should return array of tokenIds for tokensOfowner call", async function () {
+    let approveadd1 = token.connect(owner);
+    await approveadd1.approve(box.address, ethers.utils.parseEther("100.0"));
+    await expect(box.mintTo())
+      .to.emit(box, "TokenMinted(address,uint256)")
+      .withArgs(owner.address, ethers.BigNumber.from("1"));
+    expect(await token.balanceOf(box.address)).to.equal(
+      ethers.utils.parseEther("1")
+    );
+    expect(await box.tokenURI(1)).to.equal("baseTokenURI1");
+    expect(await box.tokensOfOwner(owner.address)).to.eql([
+      ethers.BigNumber.from("1"),
+    ]);
+  });
+  it("Should return empty array for tokensOfowner call", async function () {
+    let approveadd1 = token.connect(owner);
+    await approveadd1.approve(box.address, ethers.utils.parseEther("100.0"));
+    await expect(box.mintTo())
+      .to.emit(box, "TokenMinted(address,uint256)")
+      .withArgs(owner.address, ethers.BigNumber.from("1"));
+    expect(await token.balanceOf(box.address)).to.equal(
+      ethers.utils.parseEther("1")
+    );
+    expect(await box.tokenURI(1)).to.equal("baseTokenURI1");
+    expect(await box.tokensOfOwner(addr1.address)).to.eql([]);
   });
   describe("Depositing", () => {
     it("Should revert with ERC20: transfer amount exceeds balance", async function () {
@@ -144,6 +171,35 @@ describe("ERC20Box", function () {
       expect(await tokenadd1.getAllBalancesPerBoxToken(1)).to.eql([
         [ethers.utils.parseEther("10.0"), token.address],
       ]);
+      expect(await token.balanceOf(box.address)).to.equal(
+        ethers.utils.parseEther("11")
+      );
+    });
+    it("Should return array of deposited tokens", async function () {
+      let approveadd1 = token.connect(owner);
+      await approveadd1.transfer(
+        addr1.address,
+        ethers.utils.parseEther("11.0")
+      );
+      let approveadd2 = token.connect(addr1);
+      await approveadd2.approve(box.address, ethers.utils.parseEther("11.0"));
+      let tokenadd1 = box.connect(addr1);
+      await tokenadd1.mintTo();
+      await expect(
+        tokenadd1.depositERC20(
+          ethers.utils.parseEther("10.0"),
+          token.address,
+          1
+        )
+      )
+        .to.emit(box, "RecievedERC20(address,uint256,address,uint256)")
+        .withArgs(
+          addr1.address,
+          ethers.BigNumber.from("1"),
+          token.address,
+          ethers.utils.parseEther("10.0")
+        );
+      expect(await box.getTokenAdresses(1)).to.eql([token.address]);
       expect(await token.balanceOf(box.address)).to.equal(
         ethers.utils.parseEther("11")
       );
@@ -331,7 +387,7 @@ describe("ERC20Box", function () {
     });
   });
   describe("Trading", () => {
-    it("Should sucessfully transfer token 1 owning 10 of ENCA from address1 and send it to address2", async function () {
+    it("Should sucessfully transfer token 1 owning 10 of ENCA from address1 and send it to addr2", async function () {
       let approveadd1 = token.connect(owner);
       await approveadd1.transfer(
         addr1.address,
@@ -346,7 +402,11 @@ describe("ERC20Box", function () {
         token.address,
         1
       );
-      await tokenadd1.safeTransferERC721(addr1.address, addr2.address, 1);
+      await tokenadd1["safeTransferFrom(address,address,uint256)"](
+        addr1.address,
+        addr2.address,
+        1
+      );
       expect(await box.getERC20Balance(1, token.address)).to.equal(
         ethers.utils.parseEther("10.0")
       );
@@ -371,7 +431,11 @@ describe("ERC20Box", function () {
         token.address,
         1
       );
-      await tokenadd1.safeTransferERC721(addr1.address, addr2.address, 1);
+      await tokenadd1["safeTransferFrom(address,address,uint256)"](
+        addr1.address,
+        addr2.address,
+        1
+      );
       await expect(
         tokenadd1.depositERC20(
           ethers.utils.parseEther("10.0"),
@@ -398,7 +462,11 @@ describe("ERC20Box", function () {
         token.address,
         1
       );
-      await tokenadd1.safeTransferERC721(addr1.address, addr2.address, 1);
+      await tokenadd1["safeTransferFrom(address,address,uint256)"](
+        addr1.address,
+        addr2.address,
+        1
+      );
       await expect(tokenadd1.unpackAll(1, addr1.address)).to.be.revertedWith(
         "Only Box owner can perform this action"
       );
@@ -434,6 +502,32 @@ describe("ERC20Box", function () {
       );
       expect(await box.ownerOf(2)).to.equal(addr2.address);
     });
+    it("Should sucessfully mint a child token to secondary address for token 1 and validate it by getParentToken", async function () {
+      let approveadd1 = token.connect(owner);
+      await approveadd1.transfer(
+        addr1.address,
+        ethers.utils.parseEther("11.0")
+      );
+      let approveadd2 = token.connect(addr1);
+      await approveadd2.approve(box.address, ethers.utils.parseEther("11.0"));
+      let tokenadd1 = box.connect(addr1);
+      await tokenadd1.mintTo();
+      await expect(tokenadd1.createChildToken(addr2.address, 1))
+        .to.emit(box, "DerivedTokenMinted(address,address,uint256,uint256)")
+        .withArgs(
+          addr1.address,
+          addr2.address,
+          ethers.BigNumber.from("1"),
+          ethers.BigNumber.from("2")
+        );
+      expect(await box.getChildTokens(1)).to.deep.equal([
+        ethers.BigNumber.from("2"),
+      ]);
+      expect(await token.balanceOf(box.address)).to.equal(
+        ethers.utils.parseEther("2")
+      );
+      expect(await box.getParent(2)).to.equal(1);
+    });
     it("Only owner of a token can mint child tokens", async function () {
       let approveadd1 = token.connect(owner);
       await approveadd1.transfer(
@@ -452,7 +546,7 @@ describe("ERC20Box", function () {
         ethers.utils.parseEther("1")
       );
     });
-    it("Not even token owner can mint child tokens", async function () {
+    it("Not even contract owner can mint child tokens", async function () {
       let approveadd1 = token.connect(owner);
       await approveadd1.transfer(
         addr1.address,

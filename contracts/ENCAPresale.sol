@@ -20,21 +20,17 @@ contract ENCAPresale is Ownable {
     uint256 public startDate;
     uint256 public endDate;
     uint256 private _amount;
-    address private _tokenAddress;
-    address private _ownerAddress;
-    address
-        public UNISWAP_ROUTER_ADDRESS = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    IUniswapV2Router02 public uniswapRouter;
-    IERC20 public Token;
+    address public uniswapRouterAddress;
+    IERC20 public ENCA;
 
     constructor(
         address _tokenAddress,
         uint256 _presaleLength,
-        uint8 _tokensPerETH
+        uint8 _tokensPerETH,
+        address _uniswapRouterAddress
     ) public {
-        _tokenAddress = _tokenAddress;
-        Token = IERC20(_tokenAddress);
-        uniswapRouter = IUniswapV2Router02(UNISWAP_ROUTER_ADDRESS);
+        ENCA = IERC20(_tokenAddress);
+        uniswapRouterAddress = _uniswapRouterAddress;
         presaleLength = _presaleLength * 1 days;
         tokensPerETH = _tokensPerETH;
     }
@@ -45,7 +41,7 @@ contract ENCAPresale is Ownable {
             startDate > 0 && now.sub(startDate) <= presaleLength,
             "Presale is not running"
         );
-        require(Token.balanceOf(address(this)) > 0, "No more tokens to sell");
+        require(ENCA.balanceOf(address(this)) > 0, "No more tokens to sell");
         require(
             msg.value >= 0.1 ether && msg.value <= 100 ether,
             "Invalid ether sent"
@@ -53,14 +49,14 @@ contract ENCAPresale is Ownable {
         require(!_presaleClosed);
         _amount = msg.value.mul(tokensPerETH);
         require(
-            _amount <= Token.balanceOf(address(this)),
+            _amount <= ENCA.balanceOf(address(this)),
             "Not enough tokens to sell"
         );
         // update pures.
         totalSold = totalSold.add(_amount);
         collectedETH = collectedETH.add(msg.value);
         // transfer the tokens.
-        Token.transfer(msg.sender, _amount);
+        ENCA.transfer(msg.sender, _amount);
     }
 
     // Converts ETH to Tokens and sends new Tokens to the sender
@@ -69,7 +65,7 @@ contract ENCAPresale is Ownable {
             startDate > 0 && now.sub(startDate) <= presaleLength,
             "Presale is not running"
         );
-        require(Token.balanceOf(address(this)) > 0, "No more tokens to sell");
+        require(ENCA.balanceOf(address(this)) > 0, "No more tokens to sell");
         require(
             msg.value >= 0.1 ether && msg.value <= 100 ether,
             "Invalid ether sent"
@@ -77,19 +73,19 @@ contract ENCAPresale is Ownable {
         require(!_presaleClosed);
         _amount = msg.value.mul(tokensPerETH);
         require(
-            _amount <= Token.balanceOf(address(this)),
+            _amount <= ENCA.balanceOf(address(this)),
             "Not enough tokens to sell"
         );
         // update pures.
         totalSold = totalSold.add(_amount);
         collectedETH = collectedETH.add(msg.value);
         // transfer the tokens.
-        Token.transfer(msg.sender, _amount);
+        ENCA.transfer(msg.sender, _amount);
     }
 
     // Only the contract owner can call this function
     function withdrawETH() external onlyOwner {
-        require(address(this).balance > 0);
+        require(address(this).balance > 0, "Nothing to withdraw");
         require(_presaleClosed, "Presale is still running");
         payable(owner()).transfer(collectedETH);
     }
@@ -100,13 +96,13 @@ contract ENCAPresale is Ownable {
 
     // Only the contract owner can call this function
     function _burn() internal onlyOwner {
-        require(
-            Token.balanceOf(address(this)) > 0 &&
-                now.sub(startDate) > presaleLength
-        );
-        require(_presaleClosed);
+        require(ENCA.balanceOf(address(this)) > 0, "Nothing left to burn");
+        require(_presaleClosed, "Presale is not closed");
         // burn the left over.
-        Token.transfer(address(0), Token.balanceOf(address(this)));
+        ENCA.transfer(
+            0x000000000000000000000000000000000000dEaD,
+            ENCA.balanceOf(address(this))
+        );
     }
 
     // Starts the sale
@@ -122,7 +118,7 @@ contract ENCAPresale is Ownable {
     }
 
     function availableTokens() external view returns (uint256) {
-        return Token.balanceOf(address(this));
+        return ENCA.balanceOf(address(this));
     }
 
     function concludePresale() external onlyOwner returns (bool) {
@@ -133,18 +129,19 @@ contract ENCAPresale is Ownable {
     }
 
     function _createUniswapEthPool() internal returns (address) {
-        console.log(totalSold);
-        IERC20(Token).approve(UNISWAP_ROUTER_ADDRESS, totalSold);
-        IUniswapV2Router02(uniswapRouter).addLiquidityETH{
+        address payable ownerAddress = payable(owner());
+        require(ENCA.balanceOf(address(this)) > 0, "No tokens in contract");
+        require(address(this).balance > 0, "No ETH in contract");
+        ENCA.approve(uniswapRouterAddress, totalSold);
+        IUniswapV2Router02(uniswapRouterAddress).addLiquidityETH{
             value: address(this).balance
         }(
-            _tokenAddress,
+            address(ENCA),
             totalSold,
-            totalSold.sub(totalSold.div(100).mul(5)),
+            totalSold,
             address(this).balance,
-            address(this),
+            ownerAddress,
             block.timestamp + 300
         );
-        payable(owner()).transfer(address(this).balance);
     }
 }

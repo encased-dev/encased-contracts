@@ -70,14 +70,6 @@ contract TradeableERC721Token is ERC721, Ownable {
         return newTokenId;
     }
 
-    function safeTransferERC721(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) external onlyOwnerOf(_tokenId) {
-        _safeTransfer(_from, _to, _tokenId, "");
-    }
-
     /**
      * @dev Approves another address to transfer the given array of token IDs
      * @param _to address to be approved for the given token ID
@@ -117,9 +109,9 @@ contract TradeableERC721Token is ERC721, Ownable {
         if (_proxyRegistryAddress != address(0)) {
             // Whitelist OpenSea proxy contract for easy trading.
             ProxyRegistry proxyRegistry = ProxyRegistry(_proxyRegistryAddress);
-            // if (proxyRegistry.proxies[owner] == operator) {
-            //     return true;
-            // }
+            if (address(proxyRegistry.proxies(owner)) == operator) {
+                return true;
+            }
         }
 
         return super.isApprovedForAll(owner, operator);

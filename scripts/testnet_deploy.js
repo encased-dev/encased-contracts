@@ -15,7 +15,8 @@ async function main() {
 
   // The contract is NOT deployed yet; we must wait until it is mined
   await contract.deployed();
-  let presale = await presaleFactory.deploy(contract.address, 5, 100);
+  let presale = await presaleFactory.deploy(contract.address, 5, 100,
+    0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
   console.log(presale.address);
   await presale.deployed();
   let ndx = await ndxFactory.deploy(

@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - 10
+  - 14
 
 cache: npm
 
@@ -13,3 +13,10 @@ script:
   - npx codechecks
   - npx hardhat coverage
   - cat coverage/lcov.info | npx coveralls
+
+deploy:
+  - provider: script
+    script: npm run deploy:kovan
+    on:
+      branch: testnet
+      condition: $TRAVIS_BRANCH = testnet

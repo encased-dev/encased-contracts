@@ -1,23 +1,35 @@
 const { expect } = require("chai");
-const { deployMockContract } = require("ethereum-waffle");
+const { deployMockContract, deployContract } = require("ethereum-waffle");
 const { ethers, waffle } = require("hardhat");
-const uniswapAbi = require("./mocks/UniswapRouterV2Mock.json");
+const routerMock = require("./mocks/UniswapRouterV2.json");
 
 const setUp = async () => {
   const [owner, addr1, addr2, addr3] = await ethers.getSigners();
-  const UniswapRouterV2Mock = await deployMockContract(addr3, uniswapAbi);
+  const UniswapRouterV2 = await deployMockContract(addr3, routerMock);
+  UniswapRouterV2.mock.addLiquidityETH.returns(
+    ethers.utils.parseEther("50"),
+    ethers.utils.parseEther("0.5"),
+    ethers.utils.parseEther("5")
+  );
   const tokenFactory = await ethers.getContractFactory("ENCA");
   const presaleFactory = await ethers.getContractFactory("ENCAPresale");
-  let token = await tokenFactory.deploy();
+  let router = await UniswapRouterV2.deployed();
+  let token = await tokenFactory.deploy(true);
   await token.deployed();
-  let presale = await presaleFactory.deploy(token.address, 2, 100);
+  let presale = await presaleFactory.deploy(
+    token.address,
+    2,
+    100,
+    router.address
+  );
   await presale.deployed();
   let owneradd = token.connect(owner);
   await owneradd.transfer(presale.address, ethers.utils.parseEther("100"));
   return {
     presale: presale,
     token: token,
-    addresses: [owner, addr1, addr2],
+    router: router,
+    addresses: [owner, addr1, addr2, addr3],
   };
 };
 
@@ -27,13 +39,16 @@ describe("ENCAPresale", function () {
     Promise.resolve(setUp()).then(function (res) {
       presale = res.presale;
       token = res.token;
+      router = res.router;
       owner = res.addresses[0];
       addr1 = res.addresses[1];
       addr2 = res.addresses[2];
+      addr3 = res.addresses[3];
       done();
     });
   });
   it("Should deploy properly", async function () {
+    expect(await presale.uniswapRouterAddress()).to.equal(router.address);
     expect(await presale.availableTokens()).to.equal(
       ethers.utils.parseEther("100")
     );
@@ -166,6 +181,42 @@ describe("ENCAPresale", function () {
       });
       await expect(presale.withdrawETH()).to.be.revertedWith(
         "Presale is still running"
+      );
+    });
+    it("Should conclude presale, mocked uniswap pool creation, burn rest of the tokens", async function () {
+      await presale.startSale();
+      let provider = ethers.getDefaultProvider();
+      await addr1.sendTransaction({
+        to: presale.address,
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await presale.endPresale();
+      expect(await token.balanceOf(presale.address)).to.equal(
+        ethers.utils.parseEther("50")
+      );
+      await presale.concludePresale();
+      expect(await token.balanceOf(presale.address)).to.equal(0);
+      expect(await provider.getBalance(presale.address)).to.equal(0);
+    });
+    it("Conclude should revert with not enough tokens available", async function () {
+      await presale.startSale();
+      await addr1.sendTransaction({
+        to: presale.address,
+        value: ethers.utils.parseEther("1"),
+      });
+      await presale.endPresale();
+      await expect(presale.concludePresale()).to.be.revertedWith(
+        "No tokens in contract"
+      );
+    });
+    it("Conclude should revert with not enough ETH available", async function () {
+      await presale.startSale();     
+      await presale.endPresale();
+      expect(await token.balanceOf(presale.address)).to.equal(
+        ethers.utils.parseEther("100")
+      );
+      await expect(presale.concludePresale()).to.be.revertedWith(
+        "No ETH in contract"
       );
     });
   });

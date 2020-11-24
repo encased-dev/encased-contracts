@@ -7,7 +7,8 @@ import "@nomiclabs/hardhat-etherscan";
 import "hardhat-typechain";
 import "hardhat-deploy";
 import "hardhat-gas-reporter";
-// import "hardhat-abi-exporter";
+import "hardhat-abi-exporter";
+import 'hardhat-contract-sizer';
 import "hardhat-spdx-license-identifier";
 import '@openzeppelin/hardhat-upgrades';
 import "solidity-coverage"
@@ -24,12 +25,14 @@ const config: HardhatUserConfig = {
     compilers: [{ version: "0.6.8", settings: {
       optimizer: {
         enabled: true,
-        runs: 100
+        runs: 10000
       }
     } }],
   },
   networks: {
-    hardhat: {},
+    hardhat: {
+      blockGasLimit: 9999999
+    },
     localhost: {},
     kovan: {
       url: KOVAN_RPC_URL,
@@ -56,7 +59,19 @@ const config: HardhatUserConfig = {
     rst: true,
     showMethodSig: true,
     maxMethodDiff: 20,
-    outputFile: './gas_report.rst'
+    outputFile: './gas_report.rst',
+    excludeContracts: []
+  },
+  contractSizer: {
+    alphaSort: true,
+    runOnCompile: true,
+    disambiguatePaths: false,
+  },
+  abiExporter: {
+    path: './data/abi',
+    clear: true,
+    flat: true,
+    only: ['ERC20Box', 'ENCA', 'ENCAPresale'],
   },
   paths: {
     sources: "./contracts",

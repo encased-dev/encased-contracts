@@ -15,6 +15,11 @@
         "internalType": "uint8",
         "name": "_tokensPerETH",
         "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniswapRouterAddress",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -41,23 +46,10 @@
   },
   {
     "inputs": [],
-    "name": "Token",
+    "name": "ENCA",
     "outputs": [
       {
         "internalType": "contract IERC20",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "UNISWAP_ROUTER_ADDRESS",
-    "outputs": [
-      {
-        "internalType": "address",
         "name": "",
         "type": "address"
       }
@@ -238,10 +230,10 @@
   },
   {
     "inputs": [],
-    "name": "uniswapRouter",
+    "name": "uniswapRouterAddress",
     "outputs": [
       {
-        "internalType": "contract IUniswapV2Router02",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
